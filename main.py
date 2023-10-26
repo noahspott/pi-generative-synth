@@ -3,6 +3,7 @@ from mido import Message, MidiFile, MidiTrack
 from time import sleep
 import fluidsynth
 from RPLCD.gpio import CharLCD
+from RPi import GPIO
 
 """
 
@@ -66,6 +67,17 @@ button_pins = [26, 19, 13, 6, 5]
 # sf2_file = ""
 # # fs.load_soundfont(sf2_file)
 
+#################
+# LCD Screen
+#################
+
+lcd = CharLCD(numbering_mode=GPIO.BCM, cols=16, rows=2, pin_rw=pin_lcd_rw, pin_rs=pin_lcd_rs, pin_e=pin_lcd_e, pins_data=lcd_pins[4:])
+lcd.write_string('Hello World')
+
+def write(message):
+    lcd.clear()
+    lcd.write_string(message)
+
 
 #################
 # ROTARY CODE
@@ -77,12 +89,16 @@ button_pins = [26, 19, 13, 6, 5]
 
 def handle_rotate_cw():
     print("rotated clockwise")
+    write("rotated clockwise")
+
 
 def handle_rotate_ccw():
     print("rotated counter clockwise")
+    write("rotated counter clockwise")
 
 def handle_rotary_click():
     print("Rotary Press!")
+    write("Rotary Press!")
 
 rotary_encoder = RotaryEncoder(2, 3)
 rotary_encoder.when_rotated_clockwise = handle_rotate_cw
@@ -111,20 +127,14 @@ def map_buttons_to_midi():
 # Function to play a MIDI note on
 def play_midi_note_on(note, velocity=64):
     print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
+    write(f'NOTE ON note: {note}, velocity: {velocity}')
     # fs.noteon(0, note, velocity)
 
 # Function to play a MIDI note off
 def play_midi_note_off(note, velocity=0):
     print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
+    write(f'NOTE OFF note: {note}, velocity: {velocity}')
     # fs.noteoff(velocity, note)
-
-#################
-# LCD Screen
-#################
-
-lcd = CharLCD(pin_rw=pin_lcd_rw, pin_rs=pin_lcd_rs, pin_e=pin_lcd_e, pins_data=lcd_pins[4:])
-
-lcd.write_string('Hello World')
 
 #################
 # MAIN
