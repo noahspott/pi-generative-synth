@@ -2,27 +2,61 @@ from gpiozero import Button, RotaryEncoder
 from mido import Message, MidiFile, MidiTrack
 from time import sleep
 import fluidsynth
+from RPLCD.gpio import CharLCD
 
 """
+
 Pin Map Legend:
-    2  - rotary: CLK
-    3  - rotary: DT
-    4  - rotary: SW
 
+    2  - rotary: CLK                
+    3  - rotary: DT
+    4  - rotary: SW             14 - 
+                                15 - 
+    17 - lcd: rw                18 - 
+    27 - lcd: rs                     
+    22 - lcd: e                 23 - 
+                                24 - 
+    10 -
+    9  -                        25 - 
+    11 -                        8  -
+                                7  -
+    
     5  - Button 5 (leftmost)
-    6  - Button 4
-    13 - Button 3
-    19 - Button 2
-    26 - Button 1 (rightmost)
-"""
+    6  - Button 4               12 -
+    13 - Button 3               
+    19 - Button 2               16 -
+    26 - Button 1 (rightmost)   20 -
+                                21 -
+
+"""    
+
+#################
+# PINS
+#################
+
+pin_rotary_clk = 2
+pin_rotary_dt = 3
+pin_rotary_sw = 4
+
+pin_lcd_rw = 17
+pin_lcd_rs = 27
+pin_lcd_e = 22
+
+pin_lcd_d0 = None
+pin_lcd_d1 = None
+pin_lcd_d2 = None
+pin_lcd_d3 = None
+
+pin_lcd_d4 = 23
+pin_lcd_d5 = 18
+pin_lcd_d6 = 15
+pin_lcd_d7 = 14
+
+lcd_pins = [pin_lcd_d0, pin_lcd_d1, pin_lcd_d2, pin_lcd_d3, 
+            pin_lcd_d4, pin_lcd_d5, pin_lcd_d6, pin_lcd_d7]
 
 # Keys are numbered left to right 1-5
 button_pins = [26, 19, 13, 6, 5]
-buttons = [Button(pin) for pin in button_pins]
-
-midi_notes = [60, 62, 64, 65, 67]
-
-sample_rate = 44100
 
 #################
 # FLUID SYNTH CODE
@@ -62,6 +96,10 @@ rotary_button.when_pressed = handle_rotary_click
 # BUTTON MIDI CODE
 #################
 
+buttons = [Button(pin) for pin in button_pins]
+midi_notes = [60, 62, 64, 65, 67]
+sample_rate = 44100
+
 def map_buttons_to_midi():
     for button, note in zip(buttons, midi_notes):
         button.when_pressed = lambda note=note: play_midi_note_on(note)
@@ -80,6 +118,13 @@ def play_midi_note_off(note, velocity=0):
     print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
     # fs.noteoff(velocity, note)
 
+#################
+# LCD Screen
+#################
+
+lcd = CharLCD(pin_rw=pin_lcd_rw, pin_rs=pin_lcd_rs, pin_e=pin_lcd_e, pins_data=lcd_pins[4:])
+
+lcd.write_string('Hello World')
 
 #################
 # MAIN
