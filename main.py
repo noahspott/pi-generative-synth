@@ -71,8 +71,13 @@ button_pins = [26, 19, 13, 6, 5]
 # LCD Screen
 #################
 
-lcd = CharLCD(numbering_mode=GPIO.BCM, cols=16, rows=2, pin_rw=pin_lcd_rw, pin_rs=pin_lcd_rs, pin_e=pin_lcd_e, pins_data=lcd_pins[4:])
-lcd.write_string('Hello World')
+lcd = CharLCD(numbering_mode=GPIO.BCM, 
+              cols=16, rows=2, 
+              pin_rw=pin_lcd_rw, pin_rs=pin_lcd_rs, pin_e=pin_lcd_e, pins_data=lcd_pins[4:])
+lcd.write_string('GENERATIVE\n\rAMBIENT MACHINE')
+lcd.cursor_mode = 'blink'
+
+print(lcd.cursor_pos)
 
 def write(message):
     lcd.clear()
