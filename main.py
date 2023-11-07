@@ -1,9 +1,11 @@
 from gpiozero import Button, RotaryEncoder
-from mido import Message, MidiFile, MidiTrack
-from time import sleep
-import fluidsynth
 from RPLCD.gpio import CharLCD
 from RPi import GPIO
+from mido import Message, MidiFile, MidiTrack
+import subprocess
+from time import sleep
+import atexit
+# import OSC
 
 """
 
@@ -58,14 +60,6 @@ lcd_pins = [pin_lcd_d0, pin_lcd_d1, pin_lcd_d2, pin_lcd_d3,
 
 # Keys are numbered left to right 1-5
 button_pins = [26, 19, 13, 6, 5]
-
-#################
-# FLUID SYNTH CODE
-#################
-# fs = fluidsynth.Synth(sample_rate=sample_rate)
-# # fs.start(driver="alsa")
-# sf2_file = ""
-# # fs.load_soundfont(sf2_file)
 
 #################
 # LCD Screen
@@ -133,19 +127,34 @@ def map_buttons_to_midi():
 def play_midi_note_on(note, velocity=64):
     print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
     write(f'NOTE ON note: {note}, velocity: {velocity}')
-    # fs.noteon(0, note, velocity)
+    
 
 # Function to play a MIDI note off
 def play_midi_note_off(note, velocity=0):
     print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
     write(f'NOTE OFF note: {note}, velocity: {velocity}')
-    # fs.noteoff(velocity, note)
+
+#################
+# SOUNDCOLLIDER CODE
+#################
+
+@atexit.register
+def shutdown_soundcollider():
+    print("Shutting down SoundCollider server")
+    subprocess.call(['pkill', '-f', 'sclang']) 
 
 #################
 # MAIN
 #################
+
+def main():
+    # Start SoundCollider server in a subprocess
+    subprocess.Popen(['sclang', 'startup.scd'])
+
+    # Wait for server to boot
+    sleep(5)
+
+    map_buttons_to_midi()
+
 if __name__ == '__main__':
-    try:
-        map_buttons_to_midi()
-    except KeyboardInterrupt:
-        pass
+    main()

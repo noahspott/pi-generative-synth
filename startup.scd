@@ -1,0 +1,2 @@
+// Startup server
+s.boot
