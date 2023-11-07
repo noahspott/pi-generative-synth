@@ -10,7 +10,7 @@ https://github.com/supercollider/supercollider/blob/develop/README_RASPBERRY_PI.
 <pre>
 echo /usr/bin/jackd -P75 -dalsa -dhw:3 -r44100 -p512 -n3 > ~/.jackdrc
 </pre>
-To see your available devices run 
+You might want/need to change your audio I/O device. To see your available devices:
 <pre>
 aplay -l
 </pre>
