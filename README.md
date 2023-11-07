@@ -5,4 +5,4 @@
 
 ## Startup (Supercollider Server)
 - Open a new terminal
-> sclang
+```sclang```
