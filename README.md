@@ -7,9 +7,7 @@ https://github.com/supercollider/supercollider/blob/develop/README_RASPBERRY_PI.
 ## Setup Audio I/O
 <b>Create your Jack configuration file:</b><br/>
 <pre>
-```bash
 echo /usr/bin/jackd -P75 -dalsa -dhw:3 -r44100 -p512 -n3 > ~/.jackdrc
-```
 </pre>
 "dhw:3" is your desired audio I/O device. <br/>
 To see your available devices run ```aplay -l```.
