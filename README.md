@@ -10,7 +10,10 @@ https://github.com/supercollider/supercollider/blob/develop/README_RASPBERRY_PI.
 echo /usr/bin/jackd -P75 -dalsa -dhw:3 -r44100 -p512 -n3 > ~/.jackdrc
 </pre>
 "dhw:3" is your desired audio I/O device. <br/>
-To see your available devices run ```aplay -l```.
+To see your available devices run 
+<pre>
+aplay -l
+</pre>
 
 ## Startup
 ### SuperCollider Server
