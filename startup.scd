@@ -8,14 +8,18 @@ s.waitForBoot{
     "* Server booted! *".postln;
     "******************".postln;
 
+    s.options.maxLogins = 5;
+
     // Define Synth
-    (
-    SynthDef("sine", { arg freq;
+    SynthDef("sine", { arg freq=800;
         var osc;
         osc = SinOsc.ar(freq, 0, 0.1); // 800 Hz sine oscillator
         Out.ar(0, osc); // send output to audio bus zero.
-    }).add;
-    )
+    }).writeDefFile; // write the def to disk in the default directory synthdefs/
+
+    s.sendSynthDef("sine");
+
+    
 
     // n = NetAddr.new("127.0.0.1", NetAddr.langPort); // local machine
 

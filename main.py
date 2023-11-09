@@ -7,6 +7,7 @@ from time import sleep
 import atexit
 from osc4py3.as_eventloop import *
 from osc4py3 import oscbuildparse
+import sys
 
 from pythonosc import udp_client, osc_message_builder, osc_bundle_builder
 
@@ -115,21 +116,22 @@ rotary_button.when_pressed = handle_rotary_click
 #################
 
 buttons = [Button(pin) for pin in button_pins]
-midi_notes = [60, 62, 64, 65, 67]
+midi_notes = [500, 700, 900, 1100, 1300]
 sample_rate = 44100
 
 def map_buttons_to_midi():
     for button, note in zip(buttons, midi_notes):
         button.when_pressed = lambda note=note: play_midi_note_on(note)
         button.when_released = lambda note=note: play_midi_note_off(note)
+        
 
-    while True:
-        sleep(0.1)  # Add a small delay
-
+node_id = 1000
 # Function to play a MIDI note on
 def play_midi_note_on(note, velocity=64):
     print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
     write(f'NOTE ON note: {note}, velocity: {velocity}')
+
+    global node_id
 
     # Create a bundle builder to contain the message
     bundle_builder = osc_bundle_builder.OscBundleBuilder(osc_bundle_builder.IMMEDIATELY)
@@ -137,11 +139,11 @@ def play_midi_note_on(note, velocity=64):
     # Create a message with osc_message_builder
     msg_builder = osc_message_builder.OscMessageBuilder("/s_new")
     msg_builder.add_arg("sine")
-    msg_builder.add_arg(0)  # Assuming s.nextNodeID holds the value for x
+    msg_builder.add_arg(node_id)  # Assuming s.nextNodeID holds the value for x
     msg_builder.add_arg(1)
     msg_builder.add_arg(1)
     msg_builder.add_arg("freq")
-    msg_builder.add_arg(900)
+    msg_builder.add_arg(note)
 
     # Build the message
     msg = msg_builder.build()
@@ -159,10 +161,14 @@ def play_midi_note_off(note, velocity=0):
     print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
     write(f'NOTE OFF note: {note}, velocity: {velocity}')
 
-    msg = osc_message_builder.OscMessageBuilder(address = '/note_off')
-    # msg.add_arg(100, arg_type='i')
+    global node_id
+
+    msg = osc_message_builder.OscMessageBuilder(address = '/n_free')
+    msg.add_arg(node_id)
     msg = msg.build()
     client.send(msg)
+
+    globals()['node_id'] += 1
 
 #################
 # STARTUP
@@ -195,14 +201,39 @@ def startup():
     # msg = msg.build()
     # client.send(msg)
 
+    # Register to receive notifications from server with /notify
+    msg = osc_message_builder.OscMessageBuilder(address = '/notify')
+    msg.add_arg(1)
+    msg = msg.build()
+    client.send(msg)
+
+
 #################
 # MAIN
 #################
 
+def handle_shutdown():
+    print("Shutting down program...")
+
+    # Send /quit message to server
+    msg = osc_message_builder.OscMessageBuilder(address = '/quit')
+    msg.add_arg(1)
+    msg = msg.build()
+    client.send(msg)
+
+    exit()
+
 def main():
     startup()
-
     map_buttons_to_midi()
 
+    while True:
+        sleep(0.1)  # Add a small delay
+
+        # Poll keyboard for shutdown trigger
+        char = sys.stdin.read(1)
+        if char == "q":
+            handle_shutdown()
+        
 if __name__ == '__main__':
     main()
