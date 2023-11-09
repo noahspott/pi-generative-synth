@@ -117,10 +117,19 @@ rotary_button.when_pressed = handle_rotary_click
 
 buttons = [Button(pin) for pin in button_pins]
 midi_notes = [500, 700, 900, 1100, 1300]
+
+c_pentatonic_frequencies = [
+    523.251,  # C5
+    587.330,  # D5
+    659.255,  # E5
+    783.991,  # G5
+    880.000,  # A5
+]
+
 sample_rate = 44100
 
 def map_buttons_to_midi():
-    for button, note in zip(buttons, midi_notes):
+    for button, note in zip(buttons, c_pentatonic_frequencies):
         button.when_pressed = lambda note=note: play_midi_note_on(note)
         button.when_released = lambda note=note: play_midi_note_off(note)
         
@@ -129,7 +138,7 @@ node_id = 1000
 # Function to play a MIDI note on
 def play_midi_note_on(note, velocity=64):
     print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
-    write(f'NOTE ON note: {note}, velocity: {velocity}')
+    write(f'NOTE ON')
 
     global node_id
 
@@ -159,7 +168,7 @@ def play_midi_note_on(note, velocity=64):
 # Function to play a MIDI note off
 def play_midi_note_off(note, velocity=0):
     print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
-    write(f'NOTE OFF note: {note}, velocity: {velocity}')
+    write(f'NOTE OFF')
 
     global node_id
 
@@ -185,9 +194,9 @@ client_port = 5000
 
 def startup():
     # Start SuperCollider server in a subprocess
-    # subprocess.Popen(['sclang', 'startup.scd'])
+    subprocess.Popen(['sclang', 'startup.scd'])
     # Wait for server to boot
-    # sleep(5)
+    sleep(5)
 
     global client
     client = udp_client.SimpleUDPClient(server_ip, server_port)
