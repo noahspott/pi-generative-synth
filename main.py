@@ -5,7 +5,10 @@ from mido import Message, MidiFile, MidiTrack
 import subprocess
 from time import sleep
 import atexit
-# import OSC
+from osc4py3.as_eventloop import *
+from osc4py3 import oscbuildparse
+
+from pythonosc import udp_client, osc_message_builder, osc_bundle_builder
 
 """
 
@@ -127,6 +130,28 @@ def map_buttons_to_midi():
 def play_midi_note_on(note, velocity=64):
     print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
     write(f'NOTE ON note: {note}, velocity: {velocity}')
+
+    # Create a bundle builder to contain the message
+    bundle_builder = osc_bundle_builder.OscBundleBuilder(osc_bundle_builder.IMMEDIATELY)
+
+    # Create a message with osc_message_builder
+    msg_builder = osc_message_builder.OscMessageBuilder("/s_new")
+    msg_builder.add_arg("sine")
+    msg_builder.add_arg(0)  # Assuming s.nextNodeID holds the value for x
+    msg_builder.add_arg(1)
+    msg_builder.add_arg(1)
+    msg_builder.add_arg("freq")
+    msg_builder.add_arg(900)
+
+    # Build the message
+    msg = msg_builder.build()
+
+    # Add the message to the bundle
+    bundle_builder.add_content(msg)
+
+    # Send the bundle
+    bundle = bundle_builder.build()
+    client.send(bundle)
     
 
 # Function to play a MIDI note off
@@ -134,25 +159,48 @@ def play_midi_note_off(note, velocity=0):
     print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
     write(f'NOTE OFF note: {note}, velocity: {velocity}')
 
+    msg = osc_message_builder.OscMessageBuilder(address = '/note_off')
+    # msg.add_arg(100, arg_type='i')
+    msg = msg.build()
+    client.send(msg)
+
 #################
-# SOUNDCOLLIDER CODE
+# STARTUP
 #################
 
-@atexit.register
-def shutdown_soundcollider():
-    print("Shutting down SoundCollider server")
-    subprocess.call(['pkill', '-f', 'sclang']) 
+process = None
+
+server_ip = "127.0.0.1"
+server_port = 57110
+server_address = f"/{server_ip}:{server_port}"
+
+client_ip = "127.0.0.2"
+client_port = 5000
+
+def startup():
+    # Start SuperCollider server in a subprocess
+    # subprocess.Popen(['sclang', 'startup.scd'])
+    # Wait for server to boot
+    # sleep(5)
+
+    global client
+    client = udp_client.SimpleUDPClient(server_ip, server_port)
+
+    # TODO: Write code to wait for server to be ready.
+    # use the /status command of the server
+
+    # Create a new synth??
+    # msg = osc_message_builder.OscMessageBuilder(address = '/s_new')
+    # msg.add_arg("sine", arg_type='s')
+    # msg = msg.build()
+    # client.send(msg)
 
 #################
 # MAIN
 #################
 
 def main():
-    # Start SoundCollider server in a subprocess
-    subprocess.Popen(['sclang', 'startup.scd'])
-
-    # Wait for server to boot
-    sleep(5)
+    startup()
 
     map_buttons_to_midi()
 
