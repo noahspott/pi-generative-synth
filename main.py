@@ -1,13 +1,14 @@
 from gpiozero import Button, RotaryEncoder
 from RPLCD.gpio import CharLCD
 from RPi import GPIO
-from mido import Message, MidiFile, MidiTrack
+import mido
 import subprocess
 from time import sleep
 import atexit
 from osc4py3.as_eventloop import *
 from osc4py3 import oscbuildparse
 import sys
+from music21 import scale, note
 
 from pythonosc import udp_client, osc_message_builder, osc_bundle_builder
 
@@ -66,6 +67,25 @@ lcd_pins = [pin_lcd_d0, pin_lcd_d1, pin_lcd_d2, pin_lcd_d3,
 button_pins = [26, 19, 13, 6, 5]
 
 #################
+# SYNTH STATE
+#################
+
+SCALES = [
+    'major',
+    'minor'
+]
+
+KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 
+        'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+OCTAVES = [range(1, 8)]
+
+CURRENT_SCALE = SCALES[0]
+CURRENT_KEY = KEYS[0]
+CURRENT_POS = 20
+CURRENT_OCTAVE = 4 # start at middle
+
+#################
 # LCD Screen
 #################
 
@@ -94,10 +114,22 @@ def handle_rotate_cw():
     print("rotated clockwise")
     write("rotated clockwise")
 
+    globals()['CURRENT_POS'] += 1
+
+    print(f"current_pos: {CURRENT_POS}")
+
+    set_button_notes(CURRENT_KEY, CURRENT_SCALE, CURRENT_POS)
 
 def handle_rotate_ccw():
     print("rotated counter clockwise")
     write("rotated counter clockwise")
+
+    globals()['CURRENT_POS'] -= 1
+
+    print(f"current_pos: {CURRENT_POS}")
+
+    set_button_notes(CURRENT_KEY, CURRENT_SCALE, CURRENT_POS)
+
 
 def handle_rotary_click():
     print("Rotary Press!")
@@ -117,6 +149,7 @@ rotary_button.when_pressed = handle_rotary_click
 
 buttons = [Button(pin) for pin in button_pins]
 midi_notes = [500, 700, 900, 1100, 1300]
+pos = 0
 
 c_pentatonic_frequencies = [
     523.251,  # C5
@@ -128,16 +161,91 @@ c_pentatonic_frequencies = [
 
 sample_rate = 44100
 
-def map_buttons_to_midi():
-    for button, note in zip(buttons, c_pentatonic_frequencies):
-        button.when_pressed = lambda note=note: play_midi_note_on(note)
-        button.when_released = lambda note=note: play_midi_note_off(note)
+def get_button_notes(scale, pos):
+    """
+        From a scale and the position of a rotary knob,
+        return the appropriate pitches for the buttons.
+
+        Args:
+            scale - a music21 scale object
+            pos - position of a rotary knob
+    """
+
+    scale_degrees = [(pos + i) % 5 for i in range(5)]
+    octaves = [(pos + i) // 5 for i in range(5)]
+
+    print(f"scale_degress: {scale_degrees}")
+    print(f"octaves: {octaves}")
+
+    pitches = []
+
+    # Build pitch array
+    for degree, octave in zip(scale_degrees, octaves):
+        # get the letter name from the scale degree of the scale
+        letter = str(scale.pitchFromDegree(degree + 1))[0]
+
+        # attach it to the octave
+        pitch = letter + str(octave)
+
+        pitches.append(pitch)
+
+    print(f"pitches: {pitches}")
+
+    return pitches
+
+def get_scale(tonic, scale_name):
+
+    if scale_name == 'major':
+        return scale.MajorScale(tonic)
+    
+    elif scale_name == 'minor':
+        return scale.NaturalMinorScale(tonic)
+    
+    else:
+        print("Scale name not recognized.")
+        return  # Exit the function if scale name is not recognized
+
+
+def set_button_notes(tonic, scale_name, pos):
+    """Assigns the frequencies of the first 5 notes of the specified scale to the buttons in the buttons array.
+
+    Args:
+        tonic: The tonic of the scale.
+        scale_name: The name of the scale ('major_pentatonic', 'minor_pentatonic', 'major', 'minor').
+        pos: The position of the first note in the scale to assign to the first button.
+
+    """
+
+    octave = CURRENT_POS // 5
+    pitch = tonic + str(octave)
+
+    # Get the music21 scale object
+    if pos < 0:
+        pos += 5
+
+    chosen_scale = get_scale(tonic, scale_name)
+
+    # After the scale w
+    pitches = get_button_notes(chosen_scale, pos)
+
+    for i in range(5):
+        note_freq = note.Note(pitches[i]).pitch.frequency
+
+        buttons[i].when_pressed = lambda note=note_freq: play_midi_note_on(note)
+        buttons[i].when_released = lambda note=note_freq: play_midi_note_off(note)
+
+
+
+# def map_buttons_to_midi():
+#     for button, note in zip(buttons, c_pentatonic_frequencies):
+#         button.when_pressed = lambda note=note: play_midi_note_on(note)
+#         button.when_released = lambda note=note: play_midi_note_off(note)
         
 
 node_id = 1000
 # Function to play a MIDI note on
 def play_midi_note_on(note, velocity=64):
-    print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
+    # print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
     write(f'NOTE ON')
 
     global node_id
@@ -167,7 +275,7 @@ def play_midi_note_on(note, velocity=64):
 
 # Function to play a MIDI note off
 def play_midi_note_off(note, velocity=0):
-    print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
+    # print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
     write(f'NOTE OFF')
 
     global node_id
@@ -177,10 +285,10 @@ def play_midi_note_off(note, velocity=0):
     msg = msg.build()
     client.send(msg)
 
-    globals()['node_id'] += 1
+    # globals()['node_id'] += 1
 
 #################
-# STARTUP
+# STARTUP / SHUTDOWN
 #################
 
 process = None
@@ -211,15 +319,10 @@ def startup():
     # client.send(msg)
 
     # Register to receive notifications from server with /notify
-    msg = osc_message_builder.OscMessageBuilder(address = '/notify')
-    msg.add_arg(1)
-    msg = msg.build()
-    client.send(msg)
-
-
-#################
-# MAIN
-#################
+    # msg = osc_message_builder.OscMessageBuilder(address = '/notify')
+    # msg.add_arg(1)
+    # msg = msg.build()
+    # client.send(msg)
 
 def handle_shutdown():
     print("Shutting down program...")
@@ -232,14 +335,18 @@ def handle_shutdown():
 
     exit()
 
+#################
+# MAIN
+#################
+
 def main():
     startup()
-    map_buttons_to_midi()
+    set_button_notes(CURRENT_KEY, CURRENT_SCALE, CURRENT_POS)
 
     while True:
         sleep(0.1)  # Add a small delay
 
-        # Poll keyboard for shutdown trigger
+        # Poll tonicboard for shutdown trigger
         char = sys.stdin.read(1)
         if char == "q":
             handle_shutdown()
