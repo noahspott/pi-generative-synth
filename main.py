@@ -278,14 +278,14 @@ def play_midi_note_off(note, velocity=0):
     # print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
     write(f'NOTE OFF')
 
-    global node_id
+    # global node_id
 
-    msg = osc_message_builder.OscMessageBuilder(address = '/n_free')
-    msg.add_arg(node_id)
-    msg = msg.build()
-    client.send(msg)
+    # msg = osc_message_builder.OscMessageBuilder(address = '/n_free')
+    # msg.add_arg(node_id)
+    # msg = msg.build()
+    # client.send(msg)
 
-    # globals()['node_id'] += 1
+    globals()['node_id'] += 1
 
 #################
 # STARTUP / SHUTDOWN

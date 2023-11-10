@@ -19,10 +19,39 @@ s.waitForBoot{
     
     // Define Synth
     SynthDef("sine", { arg freq=800;
-        var osc;
-        osc = SinOsc.ar(freq, 0, 0.1); // 800 Hz sine oscillator
-        Out.ar(0, osc); // send output to audio bus zero.
-    }); 
+        var sig, env, osc;
+        env = Line.kr(1, 0, 1);
+        osc = SinOsc.ar(freq, 0, 0.1); 
+
+        sig = osc * env;
+
+        Out.ar([0, 1], sig); // send output to audio bus zero.
+    }).add; 
+
+    // SynthDef("adsr_sine_no_sustain", {
+    //     arg freq=800, gate=1, amp=0.5, attack=0.01, decay=0.1, release=0.1;
+        
+    //     var env, osc, sig;
+        
+    //     // Envelope with zero sustain
+    //     env = EnvGen.kr(EnvGen.ad(attack, decay, release), gate, doneAction: 2);
+        
+    //     // Oscillator
+    //     osc = SinOsc.ar(freq, 0, 0.1); // Change frequency and other parameters as needed
+        
+    //     // Apply envelope to the oscillator
+    //     sig = osc * env * amp;
+        
+    //     // Output in stereo
+    //     Out.ar([0, 1], sig);
+    // }).add;
+
+    // SynthDef("envsaw",{ arg out=100, pan=0, sustain=0.5, freq=500, amp=1, cutoff=10000, rezz=1;
+    // var env;
+    // env = EnvGen.kr(Env.perc(0.01, sustain, 0.2), doneAction: Done.none, gate:amp);
+    // Out.ar(out,Pan2.ar(RLPF.ar(Saw.ar(Lag.kr(freq,0.1),env),cutoff,rezz)*amp,
+    //     pan));
+    // });
 
     // s.sendSynthDef("sine");
 
