@@ -255,7 +255,7 @@ def play_midi_note_on(note, velocity=64):
 
     # Create a message with osc_message_builder
     msg_builder = osc_message_builder.OscMessageBuilder("/s_new")
-    msg_builder.add_arg("sine")
+    msg_builder.add_arg("saw")
     msg_builder.add_arg(node_id)  # Assuming s.nextNodeID holds the value for x
     msg_builder.add_arg(1)
     msg_builder.add_arg(1)
@@ -271,6 +271,8 @@ def play_midi_note_on(note, velocity=64):
     # Send the bundle
     bundle = bundle_builder.build()
     client.send(bundle)
+
+    globals()['node_id'] += 1
     
 
 # Function to play a MIDI note off
@@ -285,7 +287,7 @@ def play_midi_note_off(note, velocity=0):
     # msg = msg.build()
     # client.send(msg)
 
-    globals()['node_id'] += 1
+    # globals()['node_id'] += 1
 
 #################
 # STARTUP / SHUTDOWN

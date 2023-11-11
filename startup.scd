@@ -17,11 +17,30 @@ s.waitForBoot{
     //     Out.ar(0, osc); // send output to audio bus zero.
     // }).writeDefFile; // write the def to disk in the default directory synthdefs/
     
-    // Define Synth
+    // Define "sine" Synth
     SynthDef("sine", { arg freq=800;
+        // 1. Setup variables: signal, envelope, oscillator
         var sig, env, osc;
+
+        // 2. Define the envelope: 
         env = Line.kr(1, 0, 1);
+
         osc = SinOsc.ar(freq, 0, 0.1); 
+
+        sig = osc * env;
+
+        Out.ar([0, 1], sig); // send output to audio bus zero.
+    }).add; 
+
+    // Define "saw" Synth
+    SynthDef("saw", { arg freq=800;
+        // 1. Setup variables: signal, envelope, oscillator
+        var sig, env, osc;
+
+        // 2. Define the envelope: 
+        env = Line.kr(1, 0, 1);
+
+        osc = LFSaw.ar(freq, 0, 0.1); 
 
         sig = osc * env;
 
