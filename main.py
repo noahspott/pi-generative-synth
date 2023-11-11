@@ -1,5 +1,4 @@
 from gpiozero import Button, RotaryEncoder
-from RPLCD.gpio import CharLCD
 from RPi import GPIO
 import mido
 import subprocess
@@ -9,6 +8,7 @@ from osc4py3.as_eventloop import *
 from osc4py3 import oscbuildparse
 import sys
 from music21 import scale, note
+from Screen import Screen
 
 from pythonosc import udp_client, osc_message_builder, osc_bundle_builder
 
@@ -83,24 +83,6 @@ OCTAVES = [range(1, 8)]
 CURRENT_SCALE = SCALES[0]
 CURRENT_KEY = KEYS[0]
 CURRENT_POS = 20
-CURRENT_OCTAVE = 4 # start at middle
-
-#################
-# LCD Screen
-#################
-
-lcd = CharLCD(numbering_mode=GPIO.BCM, 
-              cols=16, rows=2, 
-              pin_rw=pin_lcd_rw, pin_rs=pin_lcd_rs, pin_e=pin_lcd_e, pins_data=lcd_pins[4:])
-lcd.write_string('GENERATIVE\n\rAMBIENT MACHINE')
-lcd.cursor_mode = 'blink'
-
-print(lcd.cursor_pos)
-
-def write(message):
-    lcd.clear()
-    lcd.write_string(message)
-
 
 #################
 # ROTARY CODE
@@ -112,7 +94,7 @@ def write(message):
 
 def handle_rotate_cw():
     print("rotated clockwise")
-    write("rotated clockwise")
+    screen.write("rotated clockwise")
 
     globals()['CURRENT_POS'] += 1
 
@@ -122,7 +104,7 @@ def handle_rotate_cw():
 
 def handle_rotate_ccw():
     print("rotated counter clockwise")
-    write("rotated counter clockwise")
+    screen.write("rotated counter clockwise")
 
     globals()['CURRENT_POS'] -= 1
 
@@ -133,7 +115,7 @@ def handle_rotate_ccw():
 
 def handle_rotary_click():
     print("Rotary Press!")
-    write("Rotary Press!")
+    screen.write("Rotary Press!")
 
 rotary_encoder = RotaryEncoder(2, 3)
 rotary_encoder.when_rotated_clockwise = handle_rotate_cw
@@ -246,7 +228,7 @@ node_id = 1000
 # Function to play a MIDI note on
 def play_midi_note_on(note, velocity=64):
     # print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
-    write(f'NOTE ON')
+    screen.write('NOTE ON')
 
     global node_id
 
@@ -278,7 +260,7 @@ def play_midi_note_on(note, velocity=64):
 # Function to play a MIDI note off
 def play_midi_note_off(note, velocity=0):
     # print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
-    write(f'NOTE OFF')
+    screen.write("NOTE OFF")
 
     # global node_id
 
@@ -305,6 +287,16 @@ client_port = 5000
 def startup():
     # Start SuperCollider server in a subprocess
     subprocess.Popen(['sclang', 'startup.scd'])
+
+    # Screen initialization
+    global screen
+    screen = Screen(GPIO.BCM, 16, 2, pin_lcd_rw, pin_lcd_rs, pin_lcd_e, lcd_pins[4:])
+    screen.write('GENERATIVE')
+    screen.write('AMBIENT MACHINE', False)
+
+    # screen.lcd.cursor_mode = 'blink'
+    # print(f"Cursor Position: {screen.lcd.cursor_pos}")
+
     # Wait for server to boot
     sleep(5)
 
@@ -313,18 +305,6 @@ def startup():
 
     # TODO: Write code to wait for server to be ready.
     # use the /status command of the server
-
-    # Create a new synth??
-    # msg = osc_message_builder.OscMessageBuilder(address = '/s_new')
-    # msg.add_arg("sine", arg_type='s')
-    # msg = msg.build()
-    # client.send(msg)
-
-    # Register to receive notifications from server with /notify
-    # msg = osc_message_builder.OscMessageBuilder(address = '/notify')
-    # msg.add_arg(1)
-    # msg = msg.build()
-    # client.send(msg)
 
 def handle_shutdown():
     print("Shutting down program...")
