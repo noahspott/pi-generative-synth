@@ -21,12 +21,8 @@ class Screen:
     - lcd (CharLCD): CharLCD object for display control.
 
     Methods:
-    - write(text: str, top: bool = True) -> None:
+    - write(text: str) -> None:
         Writes the specified text to the top or bottom row of the display.
-
-        Parameters:
-        - text (str): The text to be displayed.
-        - top (bool): If True, write to the top row; otherwise, write to the bottom row.
     """
     def __init__(self, numbering_mode, cols, rows, pin_rw, pin_rs, pin_e, pins_data):
         self.rows = rows
@@ -36,30 +32,28 @@ class Screen:
                            cols=cols, rows=rows, 
                            pin_rw=pin_rw, pin_rs=pin_rs, pin_e=pin_e, pins_data=pins_data)
         
-    def write(self, text, top=True):
-        """
-        Writes the specified text to the top or bottom row of the display.
-        Truncates the text to a maximum of 16 characters.
+        self.top_text = "GENERATIVE"
+        self.bottom_text = "AMBIENT MACHINE"
 
-        Parameters:
-        - text (str): The text to be displayed.
-        - top (bool): If True, write to the top row; otherwise, write to the bottom row.
-        """
-        self.lcd.clear()  # Clear the entire display
+        self.lcd.clear()
 
-        # Truncate the text to a maximum of 16 characters
-        truncated_text = text[:self.columns]
+    def write(self, top_text=None, bottom_text=None):
+        # if strings are provided, truncate them; otherwise, use class attributes
+        truncated_top_text = top_text[:16] if top_text is not None else self.top_text[:16]
+        truncated_bottom_text = bottom_text[:16] if bottom_text is not None else self.bottom_text[:16]
 
-        row = 0 if top else 1
-        if top:
-            for i, char in enumerate(truncated_text):
-                self.grid[row][i] = char
-        else:
-            top_text = ''.join(self.grid[0])
-            bottom_text = truncated_text
-            # Display both top and bottom row text
-            self.lcd.write_string(top_text + '\n\r' + bottom_text)
-            
-        # Update the character grid
-        for i, char in enumerate(truncated_text):
-            self.grid[row][i] = char
+        # save new messages 
+        self.top_text = truncated_top_text
+        self.bottom_text = truncated_bottom_text
+
+        # build output message
+        new_message = self.top_text + '\n\r' + self.bottom_text
+        
+        # print to LCD
+        self.lcd.clear()
+        self.lcd.write_string(new_message)
+
+    def clear(self):
+        self.lcd.clear()
+
+

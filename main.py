@@ -75,14 +75,15 @@ SCALES = [
     'minor'
 ]
 
-KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 
+TONICS = ['C', 'C#', 'D', 'D#', 'E', 'F', 
         'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 OCTAVES = [range(1, 8)]
 
 CURRENT_SCALE = SCALES[0]
-CURRENT_KEY = KEYS[0]
+CURRENT_TONIC = TONICS[0]
 CURRENT_POS = 20
+CURRENT_PITCHES = ['C', 'D', 'E', 'F', 'G']
 
 #################
 # ROTARY CODE
@@ -93,25 +94,28 @@ CURRENT_POS = 20
 # Pin 4 = SW  (switch)
 
 def handle_rotate_cw():
-    print("rotated clockwise")
-    screen.write("rotated clockwise")
+    # if the rotary knob is at the lower limit, do nothing
+    if CURRENT_POS > 34:
+        return
 
+    # update the current position of the rotary knob
     globals()['CURRENT_POS'] += 1
 
     print(f"current_pos: {CURRENT_POS}")
 
-    set_button_notes(CURRENT_KEY, CURRENT_SCALE, CURRENT_POS)
+    set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
 def handle_rotate_ccw():
-    print("rotated counter clockwise")
-    screen.write("rotated counter clockwise")
+    # if the rotary knob is at the lower limit, do nothing
+    if CURRENT_POS < 1:
+        return
 
+    # update the current position of the rotary knob
     globals()['CURRENT_POS'] -= 1
 
     print(f"current_pos: {CURRENT_POS}")
 
-    set_button_notes(CURRENT_KEY, CURRENT_SCALE, CURRENT_POS)
-
+    set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
 def handle_rotary_click():
     print("Rotary Press!")
@@ -210,25 +214,24 @@ def set_button_notes(tonic, scale_name, pos):
     # After the scale w
     pitches = get_button_notes(chosen_scale, pos)
 
+    globals()['CURRENT_PITCHES'] = pitches
+
+    pitches_string = ' '.join(pitches)
+    screen.write(None, pitches_string)
+    
+
     for i in range(5):
         note_freq = note.Note(pitches[i]).pitch.frequency
 
         buttons[i].when_pressed = lambda note=note_freq: play_midi_note_on(note)
         buttons[i].when_released = lambda note=note_freq: play_midi_note_off(note)
-
-
-
-# def map_buttons_to_midi():
-#     for button, note in zip(buttons, c_pentatonic_frequencies):
-#         button.when_pressed = lambda note=note: play_midi_note_on(note)
-#         button.when_released = lambda note=note: play_midi_note_off(note)
         
 
 node_id = 1000
 # Function to play a MIDI note on
 def play_midi_note_on(note, velocity=64):
     # print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
-    screen.write('NOTE ON')
+    # screen.write('NOTE ON')
 
     global node_id
 
@@ -260,7 +263,7 @@ def play_midi_note_on(note, velocity=64):
 # Function to play a MIDI note off
 def play_midi_note_off(note, velocity=0):
     # print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
-    screen.write("NOTE OFF")
+    # screen.write("NOTE OFF")
 
     # global node_id
 
@@ -270,6 +273,7 @@ def play_midi_note_off(note, velocity=0):
     # client.send(msg)
 
     # globals()['node_id'] += 1
+    pass
 
 #################
 # STARTUP / SHUTDOWN
@@ -285,29 +289,29 @@ client_ip = "127.0.0.2"
 client_port = 5000
 
 def startup():
-    # Start SuperCollider server in a subprocess
-    subprocess.Popen(['sclang', 'startup.scd'])
-
     # Screen initialization
     global screen
     screen = Screen(GPIO.BCM, 16, 2, pin_lcd_rw, pin_lcd_rs, pin_lcd_e, lcd_pins[4:])
-    screen.write('GENERATIVE')
-    screen.write('AMBIENT MACHINE', False)
-
+    screen.write('GENERATIVE', 'AMBIENT MACHINE')
     # screen.lcd.cursor_mode = 'blink'
     # print(f"Cursor Position: {screen.lcd.cursor_pos}")
 
-    # Wait for server to boot
-    sleep(5)
+    # Start SuperCollider server in a subprocess
+    subprocess.Popen(['sclang', 'startup.scd'])
+    sleep(5) # Wait for server to boot
 
+    # Start UDP Client to communicate with SuperCollider server
     global client
     client = udp_client.SimpleUDPClient(server_ip, server_port)
 
     # TODO: Write code to wait for server to be ready.
     # use the /status command of the server
 
+
+
 def handle_shutdown():
     print("Shutting down program...")
+    screen.clear()
 
     # Send /quit message to server
     msg = osc_message_builder.OscMessageBuilder(address = '/quit')
@@ -323,7 +327,7 @@ def handle_shutdown():
 
 def main():
     startup()
-    set_button_notes(CURRENT_KEY, CURRENT_SCALE, CURRENT_POS)
+    set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
     while True:
         sleep(0.1)  # Add a small delay
