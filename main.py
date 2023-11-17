@@ -72,18 +72,20 @@ button_pins = [26, 19, 13, 6, 5]
 
 SCALES = [
     'major',
+    'lydian',
     'minor'
 ]
 
 TONICS = ['C', 'C#', 'D', 'D#', 'E', 'F', 
         'F#', 'G', 'G#', 'A', 'A#', 'B']
 
-OCTAVES = [range(1, 8)]
-
 CURRENT_SCALE = SCALES[0]
 CURRENT_TONIC = TONICS[0]
 CURRENT_POS = 20
 CURRENT_PITCHES = ['C', 'D', 'E', 'F', 'G']
+
+IS_EDIT_MODE = True
+IS_PARAM_2 = True
 
 #################
 # ROTARY CODE
@@ -94,32 +96,76 @@ CURRENT_PITCHES = ['C', 'D', 'E', 'F', 'G']
 # Pin 4 = SW  (switch)
 
 def handle_rotate_cw():
-    # if the rotary knob is at the lower limit, do nothing
-    if CURRENT_POS > 34:
+
+    # Parameter selection mode
+    if not IS_EDIT_MODE:
+        globals()['IS_PARAM_2'] = not IS_PARAM_2
+        screen.set_cursor(int(IS_PARAM_2))
         return
 
-    # update the current position of the rotary knob
-    globals()['CURRENT_POS'] += 1
+    # Edit parameter mode
+    if IS_EDIT_MODE:
 
-    print(f"current_pos: {CURRENT_POS}")
+        # Scale note selection mode
+        if IS_PARAM_2:
 
-    set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
+            # if the rotary knob is at the lower limit, do nothing
+            if CURRENT_POS > 34:
+                return
+
+            # update the current position of the rotary knob
+            globals()['CURRENT_POS'] += 1
+
+        # Scale selection mode
+        else:
+            current_scale_index = SCALES.index(CURRENT_SCALE)
+            new_scale_index = (current_scale_index + 1) % len(SCALES)
+            globals()['CURRENT_SCALE'] = SCALES[new_scale_index]
+
+        print(f"CURRENT_SCALE: {CURRENT_SCALE}")
+        # Update the buttons either way
+        set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
 def handle_rotate_ccw():
-    # if the rotary knob is at the lower limit, do nothing
-    if CURRENT_POS < 1:
+
+    # Parameter selection mode
+    if not IS_EDIT_MODE:
+        globals()['IS_PARAM_2'] = not IS_PARAM_2
+        screen.set_cursor(int(IS_PARAM_2))
         return
 
-    # update the current position of the rotary knob
-    globals()['CURRENT_POS'] -= 1
+    # Edit parameter mode
+    if IS_EDIT_MODE:
+    
+        # Scale note selection mode
+        if IS_PARAM_2:
 
-    print(f"current_pos: {CURRENT_POS}")
+            # if the rotary knob is at the lower limit, do nothing
+            if CURRENT_POS < 1:
+                return
 
-    set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
+            # update the current position of the rotary knob
+            globals()['CURRENT_POS'] -= 1
+        
+        # Scale selection mode
+        else:
+            current_scale_index = SCALES.index(CURRENT_SCALE)
+            new_scale_index = (current_scale_index - 1) % len(SCALES)
+            globals()['CURRENT_SCALE'] = SCALES[new_scale_index]
+
+        # Update the buttons either way
+        set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
 def handle_rotary_click():
     print("Rotary Press!")
-    screen.write("Rotary Press!")
+
+    # Toggle IS_EDIT_MODE
+    globals()['IS_EDIT_MODE'] = not IS_EDIT_MODE
+
+    print(f"IS_EDIT_MODE: {IS_EDIT_MODE}")
+
+    screen.set_cursor(int(IS_PARAM_2))
+    screen.hide_cursor() if IS_EDIT_MODE else screen.show_cursor()
 
 rotary_encoder = RotaryEncoder(2, 3)
 rotary_encoder.when_rotated_clockwise = handle_rotate_cw
@@ -130,22 +176,9 @@ rotary_button.when_pressed = handle_rotary_click
 
 
 #################
-# BUTTON MIDI CODE
+# BUTTON CODE
 #################
-
 buttons = [Button(pin) for pin in button_pins]
-midi_notes = [500, 700, 900, 1100, 1300]
-pos = 0
-
-c_pentatonic_frequencies = [
-    523.251,  # C5
-    587.330,  # D5
-    659.255,  # E5
-    783.991,  # G5
-    880.000,  # A5
-]
-
-sample_rate = 44100
 
 def get_button_notes(scale, pos):
     """
@@ -157,25 +190,21 @@ def get_button_notes(scale, pos):
             pos - position of a rotary knob
     """
 
+    # Get scale degrees and octaves based on rotary knob position
     scale_degrees = [(pos + i) % 5 for i in range(5)]
     octaves = [(pos + i) // 5 for i in range(5)]
-
-    print(f"scale_degress: {scale_degrees}")
-    print(f"octaves: {octaves}")
 
     pitches = []
 
     # Build pitch array
     for degree, octave in zip(scale_degrees, octaves):
         # get the letter name from the scale degree of the scale
-        letter = str(scale.pitchFromDegree(degree + 1))[0]
+        letter = str(scale.pitchFromDegree(degree + 1))[0:-1]
 
         # attach it to the octave
         pitch = letter + str(octave)
 
         pitches.append(pitch)
-
-    print(f"pitches: {pitches}")
 
     return pitches
 
@@ -185,7 +214,10 @@ def get_scale(tonic, scale_name):
         return scale.MajorScale(tonic)
     
     elif scale_name == 'minor':
-        return scale.NaturalMinorScale(tonic)
+        return scale.MinorScale(tonic)
+    
+    elif scale_name == 'lydian':
+        return scale.LydianScale(tonic)
     
     else:
         print("Scale name not recognized.")
@@ -201,38 +233,31 @@ def set_button_notes(tonic, scale_name, pos):
         pos: The position of the first note in the scale to assign to the first button.
 
     """
-
-    octave = CURRENT_POS // 5
-    pitch = tonic + str(octave)
-
     # Get the music21 scale object
-    if pos < 0:
-        pos += 5
+    music21_scale = get_scale(tonic, scale_name)
+    print(f"music21_scale: {music21_scale}")
 
-    chosen_scale = get_scale(tonic, scale_name)
-
-    # After the scale w
-    pitches = get_button_notes(chosen_scale, pos)
-
+    # Get the buttons notes and set them to the global CURRENT_PITCHES
+    pitches = get_button_notes(music21_scale, pos)
     globals()['CURRENT_PITCHES'] = pitches
-
-    pitches_string = ' '.join(pitches)
-    screen.write(None, pitches_string)
+    print(f"pitches: {pitches}")
     
-
+    # Add the pitches to the button functions
     for i in range(5):
+        # get the frequency from the pitch
         note_freq = note.Note(pitches[i]).pitch.frequency
 
-        buttons[i].when_pressed = lambda note=note_freq: play_midi_note_on(note)
-        buttons[i].when_released = lambda note=note_freq: play_midi_note_off(note)
+        # apply the click function to each button with the note hardcoded
+        buttons[i].when_pressed = lambda note=note_freq: play_note(note)
+
+    # Display scale and pitches on LCD screen
+    pitches_string = ' '.join(pitches)
+    screen.write(scale_name, pitches_string)
         
 
 node_id = 1000
 # Function to play a MIDI note on
-def play_midi_note_on(note, velocity=64):
-    # print(f'NOTE ON \nnote: {note}, velocity: {velocity}')
-    # screen.write('NOTE ON')
-
+def play_note(note):
     global node_id
 
     # Create a bundle builder to contain the message
@@ -261,55 +286,36 @@ def play_midi_note_on(note, velocity=64):
     
 
 # Function to play a MIDI note off
-def play_midi_note_off(note, velocity=0):
-    # print(f'NOTE OFF \nnote: {note}, velocity: {velocity}')
-    # screen.write("NOTE OFF")
-
-    # global node_id
-
-    # msg = osc_message_builder.OscMessageBuilder(address = '/n_free')
-    # msg.add_arg(node_id)
-    # msg = msg.build()
-    # client.send(msg)
-
-    # globals()['node_id'] += 1
+def play_midi_note_off(note):
     pass
 
 #################
 # STARTUP / SHUTDOWN
 #################
-
-process = None
-
-server_ip = "127.0.0.1"
-server_port = 57110
-server_address = f"/{server_ip}:{server_port}"
-
-client_ip = "127.0.0.2"
-client_port = 5000
+SERVER_IP = "127.0.0.1"
+SERVER_PORT = 57110
 
 def startup():
     # Screen initialization
     global screen
     screen = Screen(GPIO.BCM, 16, 2, pin_lcd_rw, pin_lcd_rs, pin_lcd_e, lcd_pins[4:])
+    screen.clear()
     screen.write('GENERATIVE', 'AMBIENT MACHINE')
-    # screen.lcd.cursor_mode = 'blink'
-    # print(f"Cursor Position: {screen.lcd.cursor_pos}")
+    screen.set_cursor(int(IS_PARAM_2))
 
     # Start SuperCollider server in a subprocess
     subprocess.Popen(['sclang', 'startup.scd'])
     sleep(5) # Wait for server to boot
+    print("Type 'q' to shutdown")
 
     # Start UDP Client to communicate with SuperCollider server
     global client
-    client = udp_client.SimpleUDPClient(server_ip, server_port)
+    client = udp_client.SimpleUDPClient(SERVER_IP, SERVER_PORT)
 
     # TODO: Write code to wait for server to be ready.
     # use the /status command of the server
 
-
-
-def handle_shutdown():
+def shutdown():
     print("Shutting down program...")
     screen.clear()
 
@@ -332,10 +338,10 @@ def main():
     while True:
         sleep(0.1)  # Add a small delay
 
-        # Poll tonicboard for shutdown trigger
+        # Let user type 'q' to shutdown
         char = sys.stdin.read(1)
         if char == "q":
-            handle_shutdown()
+            shutdown()
         
 if __name__ == '__main__':
     main()

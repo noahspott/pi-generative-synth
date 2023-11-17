@@ -19,10 +19,15 @@ class Screen:
     - columns (int): Number of columns in the display.
     - grid (List[List[str]]): Two-dimensional list representing the character grid.
     - lcd (CharLCD): CharLCD object for display control.
+    - top_text (str): Default text for the top row.
+    - bottom_text (str): Default text for the bottom row.
 
     Methods:
-    - write(text: str) -> None:
+    - write(top_text: str = None, bottom_text: str = None) -> None:
         Writes the specified text to the top or bottom row of the display.
+        If no text is provided, it uses the default values specified during initialization.
+    - clear() -> None:
+        Clears the display.
     """
     def __init__(self, numbering_mode, cols, rows, pin_rw, pin_rs, pin_e, pins_data):
         self.rows = rows
@@ -55,5 +60,14 @@ class Screen:
 
     def clear(self):
         self.lcd.clear()
+
+    def show_cursor(self):
+        self.lcd.cursor_mode = 'blink'
+
+    def hide_cursor(self):
+        self.lcd.cursor_mode = 'hide'
+
+    def set_cursor(self, row):
+        self.lcd.cursor_pos = (row, 15)
 
 

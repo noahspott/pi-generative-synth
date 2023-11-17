@@ -7,8 +7,7 @@ s.waitForBoot{
     "******************".postln;
     "* Server booted! *".postln;
     "******************".postln;
-
-    s.options.maxLogins = 5;
+    // s.options.maxLogins = 5;
 
     // // Define Synth
     // SynthDef("sine", { arg freq=800;
