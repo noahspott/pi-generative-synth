@@ -16,12 +16,14 @@ aplay -l
 </pre>
 
 ## Startup
-### Environment
+### Setup Environment
 Make sure your terminal is in the appropriate environment. For my system, I created an environment called synthenv with the associated dependencies.
 <pre>
 . ~/synthenv/bin/activate
 </pre>
-### SuperCollider Server
-Open a new terminal on your RPI and run:
-- ```sclang```
-- ```s.boot```
+
+### 
+Run main
+<pre>
+python3 main.py
+</pre>
