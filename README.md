@@ -22,6 +22,9 @@ Make sure your terminal is in the appropriate environment. For my system, I crea
 . ~/synthenv/bin/activate
 </pre>
 
+### Setup Audio Interface
+Make sure your audio interface is connected and turned on!
+
 ### 
 Run main
 <pre>

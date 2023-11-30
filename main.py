@@ -76,6 +76,8 @@ SCALES = [
     'minor'
 ]
 
+SYNTH_NAME = 'sine'
+
 TONICS = ['C', 'C#', 'D', 'D#', 'E', 'F', 
         'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -265,7 +267,7 @@ def play_note(note):
 
     # Create a message with osc_message_builder
     msg_builder = osc_message_builder.OscMessageBuilder("/s_new")
-    msg_builder.add_arg("saw")
+    msg_builder.add_arg(SYNTH_NAME)
     msg_builder.add_arg(node_id)  # Assuming s.nextNodeID holds the value for x
     msg_builder.add_arg(1)
     msg_builder.add_arg(1)
@@ -283,7 +285,30 @@ def play_note(note):
     client.send(bundle)
 
     globals()['node_id'] += 1
-    
+
+def start_ocean():
+    global node_id
+
+    # Create a bundle builder to contain the message
+    bundle_builder = osc_bundle_builder.OscBundleBuilder(osc_bundle_builder.IMMEDIATELY)
+
+    # Create a message with osc_message_builder
+    msg_builder = osc_message_builder.OscMessageBuilder("/s_new")
+    msg_builder.add_arg('ocean')
+    msg_builder.add_arg(node_id)  # Assuming s.nextNodeID holds the value for x
+
+    # Build the message
+    msg = msg_builder.build()
+
+    # Add the message to the bundle
+    bundle_builder.add_content(msg)
+
+    # Send the bundle
+    bundle = bundle_builder.build()
+    client.send(bundle)
+
+    globals()['node_id'] += 1
+
 
 # Function to play a MIDI note off
 def play_midi_note_off(note):
@@ -334,6 +359,7 @@ def shutdown():
 def main():
     startup()
     set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
+    start_ocean()
 
     while True:
         sleep(0.1)  # Add a small delay

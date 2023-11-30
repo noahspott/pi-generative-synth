@@ -7,41 +7,126 @@ s.waitForBoot{
     "******************".postln;
     "* Server booted! *".postln;
     "******************".postln;
-    // s.options.maxLogins = 5;
-
-    // // Define Synth
-    // SynthDef("sine", { arg freq=800;
-    //     var osc;
-    //     osc = SinOsc.ar(freq, 0, 0.1); // 800 Hz sine oscillator
-    //     Out.ar(0, osc); // send output to audio bus zero.
-    // }).writeDefFile; // write the def to disk in the default directory synthdefs/
     
+    // To stop the ocean, we want to set the gate to 0
+    // x.set(\gate, 0)
+    SynthDef("ocean", {
+        // arg gate = 1;
+        var sig, mod, env, amp;
+
+        amp = 0.05;
+        
+        mod = SinOsc.kr(freq: 1/8, phase: 3pi/2, mul: 0.5, add: 0.5);
+
+        // env = EnvGen.kr(
+        //     envelope: Env(
+        //         levels: [0, 1, 0],
+        //         times: [4, 4],
+        //         curve: [-1, -1],
+        //         releaseNode: 1
+        //     ),
+        //     gate: gate,
+        //     doneAction: 2
+        // );
+
+        sig = PinkNoise.ar(amp);
+
+        sig = sig * mod;
+
+        // Send the signal to the output
+        Out.ar([0, 1], sig);
+    }).add;
+
     // Define "sine" Synth
     SynthDef("sine", { arg freq=800;
         // 1. Setup variables: signal, envelope, oscillator
-        var sig, env, osc;
+        var sig, env, osc, mod, modWidth;
+
+        modWidth = 20;
+
+        mod = SinOsc.kr(freq: 4).bipolar(modWidth);
 
         // 2. Define the envelope: 
-        env = Line.kr(1, 0, 1);
+        env = XLine.kr(start: 1, end: 0.001, dur: 4, doneAction: 2);
 
-        osc = SinOsc.ar(freq, 0, 0.1); 
+        // 3. Define the oscillator
+        osc = SinOsc.ar(freq + mod, 0, 0.1); 
+
+        // Combine the oscillator with the envelope
+        sig = osc * env;
+
+        // Send the signal to the output
+        Out.ar([0, 1], sig);
+    }).add; 
+
+    // Define "saw" Synth
+    SynthDef("saw", { arg freq=800;
+        // 1. Setup variables: signal, envelope, oscillator
+        var sig, env, osc, attack, decay;
+
+        attack = 0.1;
+        decay = 5;
+
+        // 2. Define the envelope: 
+        env = EnvGen.kr(
+            envelope: Env(
+                levels: [0, 1, 0],
+                times: [attack, decay],
+                curve: [5, -10]
+            ),
+            doneAction: 2
+        );
+
+        osc = Saw.ar(freq: freq, mul: 0.1, add: 0); 
 
         sig = osc * env;
 
         Out.ar([0, 1], sig); // send output to audio bus zero.
     }).add; 
 
-    // Define "saw" Synth
-    SynthDef("saw", { arg freq=800;
+    // Define "triangle" Synth
+    SynthDef("triangle", { arg freq=800;
         // 1. Setup variables: signal, envelope, oscillator
         var sig, env, osc;
 
         // 2. Define the envelope: 
         env = Line.kr(1, 0, 1);
 
-        osc = LFSaw.ar(freq, 0, 0.1); 
+        osc = LFTri.ar(freq: freq, iphase: Rand(0, 2), mul: 0.1, add: 0); 
 
         sig = osc * env;
+
+        Out.ar([0, 1], sig); // send output to audio bus zero.
+    }).add; 
+
+    // Define "pulse" Synth
+    SynthDef("pulse", { arg freq=800;
+        // 1. Setup variables: signal, envelope, oscillator
+        var sig, env, osc;
+
+        freq = freq.lag(2);
+
+        // 2. Define the envelope: 
+        env = Line.kr(1, 0, 1);
+
+        osc = LFPulse.ar(freq: freq, width: Rand(), mul: 0.1, add: 0); 
+
+        sig = osc * env;
+
+        Out.ar([0, 1], sig); // send output to audio bus zero.
+    }).add; 
+
+    // Define "pulse" Synth
+    SynthDef("noise", { arg freq=800;
+
+        // var sig = LFPulse.ar(freq: freq, width: Rand(), mul: 0.1, add: 0);
+        
+        var sig = Decay.ar(
+            in: LFPulse.ar(freq: freq, width: Rand(), add: 0), 
+            decayTime: 1, 
+            mul: 0.1, 
+            add: 0
+        );
 
         Out.ar([0, 1], sig); // send output to audio bus zero.
     }).add; 
