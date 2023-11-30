@@ -1,12 +1,29 @@
 // Start supercollider server
 s.waitForBoot{
     // This code runs after server is booted
-    // { [SinOsc.ar(440, 0, 0.2), SinOsc.ar(442, 0, 0.2)] }.play;
-
     "\n".postln;
     "******************".postln;
     "* Server booted! *".postln;
     "******************".postln;
+
+    b = Buffer.read(s, "ocean.wav");
+
+    SynthDef("ocean-sample", {
+        var sig, amp;
+
+        amp = 0.1;
+
+        sig = PlayBuf.ar(
+            numChannels: 2,
+            bufnum: \buf.kr(0),
+            rate: BufRateScale.kr(\buf.kr(0)),
+            loop: 1
+        );
+
+        sig = sig * amp;
+
+        Out.ar(\out.kr(0), sig);
+    }).add;
     
     // To stop the ocean, we want to set the gate to 0
     // x.set(\gate, 0)
@@ -42,9 +59,9 @@ s.waitForBoot{
         // 1. Setup variables: signal, envelope, oscillator
         var sig, env, osc, mod, modWidth;
 
-        modWidth = 20;
+        modWidth = 5;
 
-        mod = SinOsc.kr(freq: 4).bipolar(modWidth);
+        mod = SinOsc.kr(freq: 0.5).bipolar(modWidth);
 
         // 2. Define the envelope: 
         env = XLine.kr(start: 1, end: 0.001, dur: 4, doneAction: 2);
