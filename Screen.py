@@ -1,5 +1,4 @@
 from RPLCD.gpio import CharLCD
-from typing import List
 
 class Screen:
     """

@@ -1,11 +1,8 @@
 from gpiozero import Button, RotaryEncoder
 from RPi import GPIO
-import mido
 import subprocess
 from time import sleep
-import atexit
 from osc4py3.as_eventloop import *
-from osc4py3 import oscbuildparse
 import sys
 from music21 import scale, note
 from Screen import Screen
@@ -93,10 +90,6 @@ IS_PARAM_2 = True
 # ROTARY CODE
 #################
 
-# Pin 2 = CLK (clock)
-# Pin 3 = DT  (direction)
-# Pin 4 = SW  (switch)
-
 def handle_rotate_cw():
 
     # Parameter selection mode
@@ -124,7 +117,6 @@ def handle_rotate_cw():
             new_scale_index = (current_scale_index + 1) % len(SCALES)
             globals()['CURRENT_SCALE'] = SCALES[new_scale_index]
 
-        print(f"CURRENT_SCALE: {CURRENT_SCALE}")
         # Update the buttons either way
         set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
@@ -159,20 +151,18 @@ def handle_rotate_ccw():
         set_button_notes(CURRENT_TONIC, CURRENT_SCALE, CURRENT_POS)
 
 def handle_rotary_click():
-    print("Rotary Press!")
-
     # Toggle IS_EDIT_MODE
     globals()['IS_EDIT_MODE'] = not IS_EDIT_MODE
-
-    print(f"IS_EDIT_MODE: {IS_EDIT_MODE}")
 
     screen.set_cursor(int(IS_PARAM_2))
     screen.hide_cursor() if IS_EDIT_MODE else screen.show_cursor()
 
+# Rotary Encoder setup code
 rotary_encoder = RotaryEncoder(2, 3)
 rotary_encoder.when_rotated_clockwise = handle_rotate_cw
 rotary_encoder.when_rotated_counter_clockwise = handle_rotate_ccw
 
+# Rotary button setup code
 rotary_button = Button(4)
 rotary_button.when_pressed = handle_rotary_click
 
@@ -181,6 +171,34 @@ rotary_button.when_pressed = handle_rotary_click
 # BUTTON CODE
 #################
 buttons = [Button(pin) for pin in button_pins]
+
+def set_button_notes(tonic, scale_name, pos):
+    """Assigns the frequencies of the first 5 notes of the specified scale to the buttons in the buttons array.
+
+    Args:
+        tonic: The tonic of the scale.
+        scale_name: The name of the scale ('major_pentatonic', 'minor_pentatonic', 'major', 'minor').
+        pos: The position of the first note in the scale to assign to the first button.
+
+    """
+    # Get the music21 scale object
+    music21_scale = get_scale(tonic, scale_name)
+
+    # Get the buttons notes and set them to the global CURRENT_PITCHES
+    pitches = get_button_notes(music21_scale, pos)
+    globals()['CURRENT_PITCHES'] = pitches
+    
+    # Add the pitches to the button functions
+    for i in range(5):
+        # get the frequency from the pitch
+        note_freq = note.Note(pitches[i]).pitch.frequency
+
+        # apply the click function to each button with the note hardcoded
+        buttons[i].when_pressed = lambda note=note_freq: play_note(note)
+
+    # Display scale and pitches on LCD screen
+    pitches_string = ' '.join(pitches)
+    screen.write(scale_name, pitches_string)
 
 def get_button_notes(scale, pos):
     """
@@ -223,39 +241,7 @@ def get_scale(tonic, scale_name):
     
     else:
         print("Scale name not recognized.")
-        return  # Exit the function if scale name is not recognized
-
-
-def set_button_notes(tonic, scale_name, pos):
-    """Assigns the frequencies of the first 5 notes of the specified scale to the buttons in the buttons array.
-
-    Args:
-        tonic: The tonic of the scale.
-        scale_name: The name of the scale ('major_pentatonic', 'minor_pentatonic', 'major', 'minor').
-        pos: The position of the first note in the scale to assign to the first button.
-
-    """
-    # Get the music21 scale object
-    music21_scale = get_scale(tonic, scale_name)
-    print(f"music21_scale: {music21_scale}")
-
-    # Get the buttons notes and set them to the global CURRENT_PITCHES
-    pitches = get_button_notes(music21_scale, pos)
-    globals()['CURRENT_PITCHES'] = pitches
-    print(f"pitches: {pitches}")
-    
-    # Add the pitches to the button functions
-    for i in range(5):
-        # get the frequency from the pitch
-        note_freq = note.Note(pitches[i]).pitch.frequency
-
-        # apply the click function to each button with the note hardcoded
-        buttons[i].when_pressed = lambda note=note_freq: play_note(note)
-
-    # Display scale and pitches on LCD screen
-    pitches_string = ' '.join(pitches)
-    screen.write(scale_name, pitches_string)
-        
+        return  # Exit the function if scale name is not recognized     
 
 node_id = 1000
 # Function to play a MIDI note on
@@ -349,7 +335,7 @@ def startup():
     global screen
     screen = Screen(GPIO.BCM, 16, 2, pin_lcd_rw, pin_lcd_rs, pin_lcd_e, lcd_pins[4:])
     screen.clear()
-    screen.write('GENERATIVE', 'AMBIENT MACHINE')
+    screen.write('RASPBERRY PI', 'AMBIENT SYNTH')
     screen.set_cursor(int(IS_PARAM_2))
 
     # Start SuperCollider server in a subprocess
@@ -360,9 +346,6 @@ def startup():
     # Start UDP Client to communicate with SuperCollider server
     global client
     client = udp_client.SimpleUDPClient(SERVER_IP, SERVER_PORT)
-
-    # TODO: Write code to wait for server to be ready.
-    # use the /status command of the server
 
 def shutdown():
     print("Shutting down program...")
